@@ -8,17 +8,18 @@ class Series:
         self.series = {'1D':None, '2D':None, '3D':None}
         self.tmax = {'1D':0, '2D':0, '3D':0}
         self.labels = {'1D':None, '2D':None, '3D':None}
+        self.task = '0'
     
     def __len__(self):
         return self.n
         
         
     def read(self, PATH):
-        task = PATH[-5]
+        self.task = PATH[-5]
         series = pd.read_csv(PATH, header=None, sep="\n")
         series = series[0].str.split(';')
         dim_idx = series.map(lambda x: int(float(x[0])))
-        labels = PATH[:-9]+'ref'+task+'.txt'
+        labels = PATH[:-9]+'ref'+self.task+'.txt'
         labels = pd.read_csv(os.path.join(labels), header=None, sep=';').drop(0, axis=1)
         
         self.n = len(series)
@@ -47,11 +48,11 @@ class Series:
             print("Wrong dim number")
             
         dim = list(self.labels.keys())[dim-1]
-        if task == '1':
+        if self.task == '1':
             label = self.labels[dim].iloc[idx].values.reshape(-1)
-        elif task == '2':
+        elif self.task == '2':
             label = self.labels[dim].iloc[idx].astype(int).values.reshape(-1)
-        elif task == '3':
+        elif self.task == '3':
             label = self.labels[dim].iloc[idx].values
             
         return serie, label
