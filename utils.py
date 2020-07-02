@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import os
 
 
@@ -57,3 +58,49 @@ class Series:
             label = self.labels[dim].iloc[idx].values
             
         return serie, label
+    
+# Function to eval predicted alpha coefficients
+
+def test_analysis_alpha(pred,ytest,algo = "Raw RF",thres=0.3):
+    """
+    pred = predicted alpha values
+    ytest = real alpha values
+    algo = algorithm description (only for plot titles)
+    thres = threshold to separate Good-Bad residuals
+    """
+    residuals = np.abs(pred-ytest)
+    print("MAE = {:.4f} \n".format(residuals.mean()))
+    
+    bad = residuals > thres
+    good = residuals <= thres
+    
+    plt.figure(figsize=(10,7))
+    
+    ax1 = plt.subplot(2,2,1)
+    ax1.hist(ytest,bins=20,label="real")
+    ax1.hist(pred,bins=20,alpha=0.6,label="predicted")
+    ax1.legend()
+    ax1.set_xlabel("$\\alpha$",size=12)
+    ax1.set_title("Predictions distro - {}".format(algo))
+    
+    ax2 = plt.subplot(2,2,2)
+    ax2.hist(np.abs(pred-ytest),bins=40)
+    ax2.set_xlabel("$|predicted-real|$",size=12)
+    ax2.set_title("Residuals distro - {}".format(algo))
+    
+    ax3 = plt.subplot(2,2,3)
+    ax3.scatter(pred,ytest,s=1,c="blue")
+    ax3.plot([0,1,2],c="red",linestyle="dashed")
+    ax3.set_xlabel("predicted",size=12)
+    ax3.set_ylabel("real",size=12)
+    ax3.set_title("real vs predicted $\\alpha$")
+    
+    ax4 = plt.subplot(2,2,4)
+    ax4.hist(ytest[bad],color="red",bins=20,label="$residual > {}$".format(thres),alpha=0.4)
+    ax4.hist(ytest[good],color="green",bins=20,label="$residual \\leq {}$".format(thres),alpha=0.4)
+    ax4.set_xlabel("real $\\alpha$",size=12)
+    ax4.set_title("Good-Bad residuals distro")
+    ax4.legend()
+    
+    plt.tight_layout()
+    plt.show()
