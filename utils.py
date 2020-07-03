@@ -74,7 +74,7 @@ class Series:
                 return np.concatenate([x,y,z], axis=1)
                 
         self.series[names[dim-1]] = self.series[names[dim-1]].map(function)
-        self.tmax[names[dim-1]] = max(self.series[names[dim-1]].map(lambda x:len(x[1:])))*dim
+        self.tmax[names[dim-1]] = max(self.series[names[dim-1]].map(lambda x:len(x[1:])))*dim+1
         
     def get(self, idx, dim):
         if dim == 1:
@@ -103,7 +103,7 @@ class Series:
         return serie, label
 
 # Plot for a given serie the ADF and the corrleation of the differentiated serie
-# in function of the differentation degree d.
+# as a function of the differentation degree d.
 
 def plot_ADF(serie, thres):
     stats = []
