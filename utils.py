@@ -33,11 +33,54 @@ class Series:
             else:
                 self.series[dim] = series[dim_idx == i+1].map(lambda x:np.array(x[1:], dtype='float64').reshape(-1, i+1, order='F'))
     
+    def differentiate(self, dim, d, thres):
+        names = list(self.series.keys())
+        
+        def get_weight_ffd(d, thres, lim):
+            w, k = [1.], 1
+            ctr = 0
+            while True:
+                w_ = -w[-1] / k * (d - k + 1)
+                if abs(w_) < thres:
+                    break
+                w.append(w_)
+                k += 1
+                ctr += 1
+                if ctr == lim - 1:
+                    break
+            w = np.array(w[::-1]).reshape(-1, 1)
+            return w
+        
+        w = get_weight_ffd(d, thres, self.tmax[names[dim-1]])
+
+        def frac_diff_ffd(x, d, thres=1e-5):
+            width = len(w) - 1
+            output = []
+            for i in range(width, len(x)):
+                output.append(np.dot(w.T, x[i - width:i + 1])[0])
+            return np.array(output)
+
+        def function(serie):
+            if dim == 1:
+                return frac_diff_ffd(serie, d=d, thres=thres)
+            elif dim == 2:
+                x = frac_diff_ffd(serie[:,0], d=d, thres=thres).reshape(-1, 1)
+                y = frac_diff_ffd(serie[:,1], d=d, thres=thres).reshape(-1, 1)
+                return np.concatenate([x,y], axis=1)
+            elif dim == 3:
+                x = frac_diff_ffd(serie[:,0], d=d, thres=thres).reshape(-1, 1)
+                y = frac_diff_ffd(serie[:,1], d=d, thres=thres).reshape(-1, 1)
+                y = frac_diff_ffd(serie[:,2], d=d, thres=thres).reshape(-1, 1)
+                return np.concatenate([x,y,z], axis=1)
+                
+        self.series[names[dim-1]] = self.series[names[dim-1]].map(function)
+        self.tmax[names[dim-1]] = max(self.series[names[dim-1]].map(lambda x:len(x[1:])))*dim
+        
     def get(self, idx, dim):
         if dim == 1:
             serie = np.zeros((len(idx), self.tmax['1D']), dtype='float64')
             for i, j in enumerate(self.series['1D'].iloc[idx]):
-                serie[i, :len(j)] += j    
+                serie[i, :len(j)] += j 
         elif dim == 2:
             serie = np.zeros((len(idx), self.tmax['2D']//2, 2), dtype='float64')
             for i, j in enumerate(self.series['2D'].iloc[idx]):
@@ -58,6 +101,32 @@ class Series:
             label = self.labels[dim].iloc[idx].values
             
         return serie, label
+
+# Plot for a given serie the ADF and the corrleation of the differentiated serie
+# in function of the differentation degree d.
+
+def plot_ADF(serie, thres):
+    stats = []
+    serie = serie[serie!=0]
+    for d in np.linspace(0,1,11):
+        snorm = frac_diff_ffd(serie, d, thres=thres)
+        serie = serie[snorm!=0]
+        snorm = snorm[snorm!=0]
+        corr = np.corrcoef(serie, snorm)[0,1]
+        snorm = adfuller(snorm,maxlag=1,regression='c',autolag=None)
+        stats.append(list(snorm[:4])+[snorm[4]['5%']]+[corr])
+    stats = np.array(stats)
+    fig, ax1 = plt.subplots(dpi=100, figsize=(5,3))
+    colors = ["#6c71c4", "#2aa198", "#d33682"]
+    ax1.plot(np.linspace(0,1,11), stats[:,0], color=colors[0])
+    ax1.plot(np.linspace(0,1,11), stats[:,4], linestyle='--', color=colors[2])
+    ax1.set_ylabel('ADF', color=colors[0])
+    ax1.tick_params(axis='y', labelcolor=colors[0])
+    ax1.grid(True)
+    ax2 = ax1.twinx()
+    ax2.plot(np.linspace(0,1,11), stats[:,5], color=colors[1])
+    ax2.set_ylabel('Correlation', color=colors[1])
+    ax2.tick_params(axis='y', labelcolor=colors[1])
     
 # Function to eval predicted alpha coefficients
 
