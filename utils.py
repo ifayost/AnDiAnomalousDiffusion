@@ -3,7 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-
 class Series:
     def __init__(self):
         self.n = 0
@@ -76,19 +75,32 @@ class Series:
         self.series[names[dim-1]] = self.series[names[dim-1]].map(function)
         self.tmax[names[dim-1]] = max(self.series[names[dim-1]].map(lambda x:len(x[1:])))*dim+1
         
-    def get(self, idx, dim):
+    def get(self, idx, dim, mask=False):
         if dim == 1:
             serie = np.zeros((len(idx), self.tmax['1D']), dtype='float64')
+            if mask:
+                mask_ = np.zeros_like(serie)
             for i, j in enumerate(self.series['1D'].iloc[idx]):
-                serie[i, :len(j)] += j 
+                serie[i, :len(j)] += j
+                if mask:
+                    mask_[i, :len(j)] += np.ones_like(j) 
+                
         elif dim == 2:
             serie = np.zeros((len(idx), self.tmax['2D']//2, 2), dtype='float64')
+            if mask:
+                mask_ = np.zeros((len(idx),self.tmax['2D']//2))
             for i, j in enumerate(self.series['2D'].iloc[idx]):
                 serie[i, :j.shape[0], :] += j
+                if mask:
+                    mask_[i, :j.shape[0]] += np.ones(1,j.shape[0]) 
         elif dim == 3:
             serie = np.zeros((len(idx), self.tmax['3D']//3, 3), dtype='float64')
+            if mask:
+                mask_ = np.zeros((len(idx),self.tmax['3D']//3))
             for i, j in enumerate(self.series['3D'].iloc[idx]):
                 serie[i, :j.shape[0], :] += j
+                if mask:
+                    mask_[i, :j.shape[0]] += np.ones(1,j.shape[0]) 
         else:
             print("Wrong dim number")
             
@@ -99,6 +111,9 @@ class Series:
             label = self.labels[dim].iloc[idx].astype(int).values.reshape(-1)
         elif self.task == '3':
             label = self.labels[dim].iloc[idx].values
+            
+        if mask:
+            return serie, label, mask_
             
         return serie, label
 
